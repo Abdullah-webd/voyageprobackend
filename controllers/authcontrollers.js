@@ -155,6 +155,10 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    console.log({ id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" })
+
     res.status(200).json({
       message: "Login successful",
       token,

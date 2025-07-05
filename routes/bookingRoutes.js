@@ -8,7 +8,7 @@ import {
 } from "../controllers/bookingController.js";
 
 // User routes
-router.post("/",  createBooking); // Book a trip
+router.post("/",authMiddleware,  createBooking); // Book a trip
 router.get("/me", authMiddleware, getMyBookings); // View my bookings
 router.delete("/:id", authMiddleware, cancelBooking); // Cancel booking
 

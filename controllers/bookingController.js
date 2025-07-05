@@ -2,23 +2,32 @@ import {Booking} from "../models/booking.js";
 // Create new booking
 export const createBooking = async (req, res) => {
   try {
-    const { packageId, travelDate, travelers, contactInfo } = req.body;
+    console.log("REQ.USER:", req.user);
+    console.log("BODY:", req.body);
+
+    const { packageId, travelDate, travelers, contactInfo,packageName } = req.body;
 
     const booking = new Booking({
-      userId: req.user.id,
+      userId: req.user?._id || req.user?.id,
       packageId,
-      travelDate,
-      travelers,
-      contactInfo
+      packageName,
+      travelDate: new Date(travelDate),
+      travelers: Number(travelers),
+      contactInfo,
+      status: "pending"
     });
 
+    console.log("Booking to be saved:", booking);
+
     await booking.save();
+
     res.status(201).json({ message: "Booking created", booking });
   } catch (error) {
-    res.status(500).json({ error: "Failed to create booking" });
+    console.error("Booking creation error:", error);
+    res.status(500).json({ error: "Failed to create booking", details: error.message });
   }
-
 };
+
 
 // Get bookings for logged-in user
 export const getMyBookings = async (req, res) => {
