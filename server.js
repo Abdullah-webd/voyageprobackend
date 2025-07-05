@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cors from 'cors';
 
-import connectDB from './config/databese.js';
+import connectDB from './config/database.js';
 
 import packageRoutes from './routes/package.route.js';
 import paymentRoutes from "./routes/payment.route.js";
