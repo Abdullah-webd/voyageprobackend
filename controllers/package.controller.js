@@ -2,7 +2,7 @@ import { Package } from "../models/package.model.js";
 
 export const getAllPackages = async (req, res) => {
   try {
-    const { search, location, availability, sortBy } = req.query;
+    const { search, location, sortBy } = req.query;
 
     let query = {};
 
@@ -13,9 +13,7 @@ export const getAllPackages = async (req, res) => {
     if (location) {
       query.location = location;
     }
-    if (availability) {
-      query.availability = availability === 'true';
-    }
+    
 
     let sortOptions = {};
 
@@ -62,9 +60,33 @@ export const getPackageById = async (req, res) => {
 }
 
 export const createPackage = async (req, res) => {
+
+   
+
+    // Basic field validation
+   
   try {
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ message: "Package data is required" });
+    const {
+      title,
+      tagline,
+      duration,
+      pricePerAdult,
+      location,
+      rating,
+      totalBookings,
+      whatsIncluded,
+      itinerary,
+      accommodation
+    } = req.body;
+
+    if (
+      !title || !tagline || !duration || !pricePerAdult || !location ||
+      !location.country || !location.city ||
+      !whatsIncluded || !Array.isArray(whatsIncluded) ||
+      !itinerary || !Array.isArray(itinerary) ||
+      !accommodation || !accommodation.roomType || !accommodation.resortType
+    ) {
+      return res.status(400).json({ message: "Missing or invalid required fields" });
     }
     const newPackage = new Package(req.body);
     const savedPackage = await newPackage.save();

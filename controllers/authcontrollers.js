@@ -8,8 +8,8 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER, // From your .env
-    pass: process.env.EMAIL_PASS, // Gmail app password
+    user: process.env.EMAIL_USER || 'webmastersmma@gmail.com', // From your .env
+    pass: process.env.EMAIL_PASS || 'dzzlinhxmmunnyfx', // Gmail app password
   },
 });
 
@@ -60,66 +60,11 @@ export const register = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Register Error:", err.message);
+    console.error("Register Error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-export const adminRegister = async (req, res) => {
-  try {
-    const { firstname, lastname, email, password } = req.body;
-    console.log("📥 Admin Registering:", email);
-    const existingUser = await User.findOne({ email });
-    if (existingUser && existingUser.role === "admin") {
-      return res.status(400).json({ error: "Admin already exists" });
-    }
-
-    const user = new User({
-      firstname,
-      lastname,
-      email,
-      password,
-      role: "admin", // Set role to admin
-    });
-
-    // 🔐 Create verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    user.emailVerificationToken = verificationToken;
-    user.emailTokenExpiresAt = Date.now() + 1000 * 60 * 60; // 1 hour
-
-    await user.save();
-    console.log("✅ Admin registered successfully:", user.email);
-
-    const verificationLink = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}`;
-
-    // 📧 Send verification email
-    await transporter.sendMail({
-      from: `"Voyage Travel" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: "Verify Your Email - Voyage Travel",
-      html: `
-        <h3>Hello ${user.firstname},</h3>
-        <p>Thank you for registering on Voyage Travel.</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <a href="${verificationLink}">✅ Verify Email</a>
-        <p>This link will expire in 1 hour.</p>
-      `,
-    });
-    res.status(201).json({
-      message: "Admin registered successfully",
-      user: {
-        id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Admin Register Error:", error.message);
-    res.status(500).json({ error: "Server error" });
-  }
-};
 
 // 🔐 LOGIN
 export const login = async (req, res) => {
