@@ -1,153 +1,197 @@
 import User from "../models/user.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-// 📧 Nodemailer Setup
+// Email setup
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER || 'webmastersmma@gmail.com', // From your .env
-    pass: process.env.EMAIL_PASS || 'dzzlinhxmmunnyfx', // Gmail app password
+    user: process.env.EMAIL_USER || "webmastersmma@gmail.com",
+    pass: process.env.EMAIL_PASS || "dzzlinhxmmunnyfx",
   },
 });
 
-// ✅ REGISTER
-export const register = async (req, res) => {
-  try {
-    const { firstname, lastname, email, password } = req.body;
+// Generate OTP
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
-    console.log("📥 Registering:", email);
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ error: "User already exists" });
-
-    const user = new User({ firstname, lastname, email, password });
-
-    // 🔐 Create verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    user.emailVerificationToken = verificationToken;
-    user.emailTokenExpiresAt = Date.now() + 1000 * 60 * 60; // 1 hour
-
-    await user.save();
-
-    const verificationLink = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}`;
-
-    // 📧 Send verification email
-    await transporter.sendMail({
-      from: `"Voyage Travel" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: "Verify Your Email - Voyage Travel",
-      html: `
-        <h3>Hello ${user.firstname},</h3>
-        <p>Thank you for registering on Voyage Travel.</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <a href="${verificationLink}">✅ Verify Email</a>
-        <p>This link will expire in 1 hour.</p>
-      `,
-    });
-
-    res.status(201).json({
-      message:
-        "User registered successfully. Please check your email to verify your account.",
-      user: {
-        id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-      },
-    });
-  } catch (err) {
-    console.error("Register Error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+// Send OTP Email
+const sendOTPEmail = async (email, otp) => {
+  await transporter.sendMail({
+    from: `"Voyage Travel" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Your OTP Code - Voyage Travel",
+    html: `<h3>Your OTP Code is:</h3><h2>${otp}</h2><p>This code expires in 10 minutes.</p>`,
+  });
 };
 
-
-// 🔐 LOGIN
-export const login = async (req, res) => {
+// ✅ SIGNUP / LOGIN (Email & Password → OTP)
+export const authWithOTP = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log("🔑 Login attempt:", email);
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password are required" });
+
+    let user = await User.findOne({ email });
+
+    // ===== SIGNUP =====
+    if (!user) {
+      user = new User({ email, password });
+    } else {
+      // ===== LOGIN — Check password =====
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch)
+        return res.status(400).json({ error: "Invalid email or password" });
+
+      // ===== If already authenticated =====
+      if (user.isAuthenticated) {
+        const isProfileIncomplete = user.isProfileComplete === true ? true : false;
+        console.log("User profile complete:",user.isProfileComplete);
+
+        if (!isProfileIncomplete) {
+          return res.status(200).json({
+            message: "Please complete your profile before proceeding.",
+            redirect: "/complete-profile",
+          });
+        }
+
+        // Profile complete → direct login
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+          expiresIn: "1d",
+        });
+
+        return res.status(200).json({
+          message: "Login successful.",
+          token,
+          redirect: "/dashboard",
+        });
+      }
+
+      // ===== If not authenticated → handle OTP =====
+      const now = Date.now();
+      if (!user.otp || !user.otpExpiresAt || user.otpExpiresAt < now) {
+        const otp = generateOTP();
+        user.otp = otp;
+        user.otpExpiresAt = now + 10 * 60 * 1000; // 10 min
+        await user.save();
+
+        await sendOTPEmail(user.email, otp);
+
+        return res.status(403).json({
+          message: "User not verified. OTP sent again.",
+          redirect: "/verify-otp",
+        });
+      } else {
+        const remainingTime = Math.ceil((user.otpExpiresAt - now) / 1000);
+        return res.status(403).json({
+          message: `User not verified. Please check your email. OTP expires in ${remainingTime} seconds.`,
+          redirect: "/verify-otp",
+        });
+      }
+    }
+
+    // ===== Brand new signup → send OTP =====
+    const otp = generateOTP();
+    user.otp = otp;
+    user.otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+    await user.save();
+
+    await sendOTPEmail(user.email, otp);
+
+    res.status(201).json({
+      message: "OTP sent to your email. Please verify.",
+      redirect: "/verify-otp",
+    });
+  } catch (err) {
+    console.error("Auth Error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+
+// ✅ VERIFY OTP
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp)
+      return res.status(400).json({ error: "Email and OTP are required" });
 
     const user = await User.findOne({ email });
 
-    if (!user) {
-      console.warn("❌ No user found");
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (!user.emailVerified) {
-      return res
-        .status(403)
-        .json({ error: "Please verify your email before logging in." });
-    }
+    if (user.otp !== otp || Date.now() > user.otpExpiresAt)
+      return res.status(400).json({ error: "Invalid or expired OTP" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log("🧪 Password match:", isMatch);
+    // Mark user as authenticated
+    user.isAuthenticated = true;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+    await user.save();
 
-    if (!isMatch)
-      return res.status(400).json({ error: "Invalid email or password" });
-
-    console.log("JWT_SECRET:", process.env.JWT_SECRET);
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    console.log({ id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" })
+    // Create token after verification
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.status(200).json({
-      message: "Login successful",
+      message: "OTP verified successfully. Login complete.",
       token,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstname: user.firstname,
+        lastname: user.lastname,
+      },
+    });
+  } catch (err) {
+    console.error("Verify OTP Error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const completeProfile = async (req, res) => {
+  try {
+    const { firstname, lastname, country, phoneNumber, state } = req.body;
+
+    if (!firstname || !lastname || !country || !phoneNumber || !state) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const userId = req.user.id; // From JWT middleware
+    const user = await User.findById(userId);
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.firstname = firstname;
+    user.lastname = lastname;
+    user.country = country;
+    user.phoneNumber = phoneNumber;
+    user.state = state;
+    user.isProfileComplete = true; // Mark profile as complete
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
       user: {
         id: user._id,
         firstname: user.firstname,
         lastname: user.lastname,
-        email: user.email,
-        role: user.role,
-      },
+        country: user.country,
+        phoneNumber: user.phoneNumber,
+        state: user.state
+      }
     });
   } catch (err) {
-    console.error("Login Error:", err.message);
+    console.error("Update Profile Error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// 📬 VERIFY EMAIL
-export const verifyEmail = async (req, res) => {
-  try {
-    const token = req.query.token;
-    if (!token) {
-      return res.status(400).json({ error: "Missing verification token" });
-    }
 
-    const user = await User.findOne({
-      emailVerificationToken: token,
-      emailTokenExpiresAt: { $gt: Date.now() },
-    });
 
-    if (!user) {
-      return res.status(400).json({ error: "Invalid or expired token" });
-    }
-
-    user.emailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailTokenExpiresAt = undefined;
-
-    await user.save();
-
-    console.log(`✅ Email verified for ${user.email}`);
-    res.status(200).json({ message: "Email verified successfully!" });
-  } catch (err) {
-    console.error("Verify Email Error:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-};

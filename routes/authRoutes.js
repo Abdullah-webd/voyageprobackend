@@ -1,12 +1,15 @@
 
 
 import express from 'express';
-import { register, login, verifyEmail } from '../controllers/authcontrollers.js';
+import { authWithOTP,verifyOTP, completeProfile } from '../controllers/authcontrollers.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
+
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/verify-email', verifyEmail); // ✅ new route
+router.post('/', authWithOTP);
+router.post('/verify-email', verifyOTP);
+router.post('/update-profile',authMiddleware, completeProfile); 
+
 
 export default router
 
