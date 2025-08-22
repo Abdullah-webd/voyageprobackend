@@ -28,7 +28,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   : ['http://localhost:5173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: "*", // 👈 allows requests from ANY origin
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
