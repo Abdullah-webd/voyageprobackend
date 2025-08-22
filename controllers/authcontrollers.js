@@ -194,4 +194,22 @@ export const completeProfile = async (req, res) => {
 };
 
 
+// DELETE ACCOUNT
+export const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id; // get user id from JWT middleware
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (err) {
+    console.error("Delete Account Error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 

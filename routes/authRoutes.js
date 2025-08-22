@@ -1,7 +1,7 @@
 
 
 import express from 'express';
-import { authWithOTP,verifyOTP, completeProfile } from '../controllers/authcontrollers.js';
+import { authWithOTP,verifyOTP, completeProfile, deleteAccount } from '../controllers/authcontrollers.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -9,6 +9,7 @@ const router = express.Router();
 router.post('/', authWithOTP);
 router.post('/verify-email', verifyOTP);
 router.post('/update-profile',authMiddleware, completeProfile); 
+router.delete('/delete-account',authMiddleware, deleteAccount);
 
 
 export default router
