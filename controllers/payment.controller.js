@@ -137,12 +137,10 @@ export const simulateWebhook = async (req, res) => {
       return res.status(404).json({ status: "error", message: "Payment record not found" });
     }
 
-    // Verify payment with Flutterwave using tx_ref
+    // Verify payment with Flutterwave
     const verifyUrl = `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${tx_ref}`;
     const response = await axios.get(verifyUrl, {
-      headers: {
-        Authorization: `Bearer ${FLW_SECRET_KEY}`
-      }
+      headers: { Authorization: `Bearer ${FLW_SECRET_KEY}` }
     });
 
     const data = response.data;
@@ -150,10 +148,22 @@ export const simulateWebhook = async (req, res) => {
     if (data.status === "success" && data.data.status === "successful") {
       // Update payment record
       payment.bookingStatus = "Confirmed";
-      payment.transactionId = data.data.id; // Flutterwave transaction ID
+      payment.transactionId = data.data.id;
       payment.paymentStatus = "successful";
       payment.paymentDate = data.data.created_at;
       await payment.save();
+
+      // Update corresponding booking
+      const booking = await Booking.findOne({
+        packageId: payment.packageId,
+        travelDate: payment.travelDate,
+        status: { $ne: "confirmed" } // only update if not already confirmed
+      });
+
+      if (booking) {
+        booking.status = "confirmed";
+        await booking.save();
+      }
 
       // Send confirmation email
       await sendEmail({
@@ -162,7 +172,7 @@ export const simulateWebhook = async (req, res) => {
         html: `
           <h2>🎉 Your payment was successful!</h2>
           <p><strong>Package:</strong> ${payment.packageName}</p>
-          <p><strong>Date:</strong> ${payment.travelDate}</p>
+          <p><strong>Date:</strong> ${payment.travelDate.toDateString()}</p>
           <p><strong>Amount:</strong> ₦${payment.totalAmountPaid}</p>
           <p><strong>Travelers:</strong> ${payment.numberOfGuests}</p>
         `
@@ -170,7 +180,7 @@ export const simulateWebhook = async (req, res) => {
 
       return res.json({
         status: "success",
-        message: "Payment confirmed and email sent."
+        message: "Payment confirmed, booking updated, and email sent."
       });
     } else {
       return res.status(400).json({

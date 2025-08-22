@@ -2,6 +2,8 @@ import User from "../models/user.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import { Booking } from "../models/booking.js";
+import Payments from "../models/Payment.model.js";
 
 // Email setup
 const transporter = nodemailer.createTransport({
@@ -275,5 +277,40 @@ export const forgotPassword = async (req, res) => {
 };
 
 
+export const getAdminDashboard = async (req, res) => {
+  try {
+    // 1️⃣ Total bookings
+    const totalBookings = await Booking.countDocuments();
 
+    // 2️⃣ Total client revenue
+    const revenueResult = await Payments.aggregate([
+      { $match: { bookingStatus: "Confirmed" } }, // only confirmed payments
+      { $group: { _id: null, totalRevenue: { $sum: "$totalAmountPaid" } } },
+    ]);
+    const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+    // 3️⃣ Top destinations (most booked packages)
+    const topDestinations = await Booking.aggregate([
+      { $group: { _id: "$packageName", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+    ]);
+
+    // 4️⃣ Recent bookings (latest 5 bookings)
+    const recentBookings = await Booking.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("userId", "firstname lastname email phoneNumber");
+
+    res.status(200).json({
+      totalBookings,
+      totalRevenue,
+      topDestinations,
+      recentBookings,
+    });
+  } catch (error) {
+    console.error("Admin dashboard error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
 

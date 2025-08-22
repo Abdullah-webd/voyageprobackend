@@ -76,8 +76,19 @@ export const createPackage = async (req, res) => {
       totalBookings,
       whatsIncluded,
       itinerary,
-      accommodation
+      accommodation,
+      images
     } = req.body;
+
+     if (!images) {
+      return res.status(400).json({ message: "Images are required" });
+    }
+    if (!Array.isArray(images)) {
+      return res.status(400).json({ message: "Images must be an array of URLs" });
+    }
+    if (images.some(img => typeof img !== "string")) {
+      return res.status(400).json({ message: "All images must be valid URLs (strings)" });
+    }
 
     if (
       !title || !tagline || !duration || !pricePerAdult || !location ||
@@ -139,35 +150,4 @@ export const deletePackage = async (req, res) => {
     res.status(500).json({ message: "Error deleting package", error });
   }
 };
-
-// Example JSON response for the reqest
-// [
-//   {
-//     "title": "Beach Paradise",
-//     "description": "Sunny beaches and cool breeze",
-//     "location": "Maldives",
-//     "price": 2000,
-//     "images": ["https://example.com/beach.jpg"],
-//     "availability": true,
-//     "duration": "6 days"
-//   },
-//   {
-//     "title": "Mountain Hike",
-//     "description": "Explore the mountains and fresh air",
-//     "location": "Nepal",
-//     "price": 1800,
-//     "images": ["https://example.com/mountain.jpg"],
-//     "availability": true,
-//     "duration": "4 days"
-//   },
-//   {
-//     "title": "City Lights",
-//     "description": "Visit the most iconic cities",
-//     "location": "New York",
-//     "price": 2500,
-//     "images": ["https://example.com/city.jpg"],
-//     "availability": false,
-//     "duration": "5 days"
-//   }
-// ]
 

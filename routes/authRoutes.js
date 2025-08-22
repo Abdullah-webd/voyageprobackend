@@ -1,7 +1,7 @@
 
 
 import express from 'express';
-import { authWithOTP,verifyOTP, completeProfile, deleteAccount, forgotPassword , resetPassword } from '../controllers/authcontrollers.js';
+import { authWithOTP,verifyOTP, completeProfile, deleteAccount, forgotPassword , resetPassword, getAdminDashboard } from '../controllers/authcontrollers.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.post('/update-profile',authMiddleware, completeProfile);
 router.delete('/delete-account',authMiddleware, deleteAccount);
 router.post('/forgot-password', authMiddleware, forgotPassword);
 router.post('/reset-password',authMiddleware, resetPassword);
+router.get("/admin-dashboard", getAdminDashboard);
 
 export default router
 
