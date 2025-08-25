@@ -9,8 +9,8 @@ import Payments from "../models/Payment.model.js";
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER || "webmastersmma@gmail.com",
-    pass: process.env.EMAIL_PASS || "dzzlinhxmmunnyfx",
+    user:"webmastersmma@gmail.com",
+    pass: "hkefujrkxqzvghbt",
   },
 });
 
@@ -67,6 +67,7 @@ export const authWithOTP = async (req, res) => {
 
         return res.status(200).json({
           message: "Login successful.",
+          user,
           token,
           redirect: "/dashboard",
         });
