@@ -10,8 +10,8 @@ router.post('/', authWithOTP);
 router.post('/verify-email', verifyOTP);
 router.post('/update-profile',authMiddleware, completeProfile); 
 router.delete('/delete-account',authMiddleware, deleteAccount);
-router.post('/forgot-password', authMiddleware, forgotPassword);
-router.post('/reset-password',authMiddleware, resetPassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.get("/admin-dashboard", getAdminDashboard);
 
 export default router
