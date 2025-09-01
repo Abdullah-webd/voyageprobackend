@@ -5,7 +5,14 @@ export const createBooking = async (req, res) => {
     console.log("REQ.USER:", req.user);
     console.log("BODY:", req.body);
 
-    const { packageId, travelDate, travelers, contactInfo,packageName } = req.body;
+    const { packageId, travelDate, travelers, contactInfo,packageName,images } = req.body;
+
+     if (!Array.isArray(images)) {
+      return res.status(400).json({ message: "Images must be an array of URLs" });
+    }
+    if (images.some(img => typeof img !== "string")) {
+      return res.status(400).json({ message: "All images must be valid URLs (strings)" });
+    }
 
     const booking = new Booking({
       userId: req.user?._id || req.user?.id,
@@ -14,7 +21,8 @@ export const createBooking = async (req, res) => {
       travelDate: new Date(travelDate),
       travelers: Number(travelers),
       contactInfo,
-      status: "pending"
+      status: "pending",
+      images
     });
 
     console.log("Booking to be saved:", booking);
@@ -79,3 +87,36 @@ export const getAllBookings = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch all bookings" });
   }
 };
+
+// Edit a booking (only by the user who created it)
+export const editBooking = async (req, res) => {
+  try {
+    const { id } = req.params; // booking ID from the URL
+    const { travelDate, travelers, contactInfo } = req.body; // editable fields
+
+    // Find the booking owned by the user
+    const booking = await Booking.findOne({ _id: id, userId: req.user.id });
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found or not owned by user" });
+    }
+
+    // You can restrict editing depending on status
+    if (booking.status === "confirmed") {
+      return res.status(403).json({ error: "Confirmed bookings cannot be edited" });
+    }
+
+    // Update only allowed fields
+    if (travelDate) booking.travelDate = new Date(travelDate);
+    if (travelers) booking.travelers = Number(travelers);
+    if (contactInfo) booking.contactInfo = contactInfo;
+
+    await booking.save();
+
+    res.json({ message: "Booking updated successfully", booking });
+  } catch (error) {
+    console.error("Booking edit error:", error);
+    res.status(500).json({ error: "Failed to edit booking", details: error.message });
+  }
+};
+

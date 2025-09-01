@@ -12,6 +12,11 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+    images:{
+    type: [String],
+    required: true,
+    // Example: ["image1.jpg", "image2.jpg", "image3.jpg"]
+  },
   packageName: {
     type: String,
     required: true
