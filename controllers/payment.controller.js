@@ -1,5 +1,6 @@
 import Payments from "../models/Payment.model.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { Booking } from "../models/booking.js";
 import axios from "axios";
 const FLW_SECRET_KEY = 'FLWSECK_TEST-769e9db540aef513a9973427f66f4daf-X'; // make sure this is set in your env
 
@@ -153,17 +154,6 @@ export const simulateWebhook = async (req, res) => {
       payment.paymentDate = data.data.created_at;
       await payment.save();
 
-      // Update corresponding booking
-      const booking = await Booking.findOne({
-        packageId: payment.packageId,
-        travelDate: payment.travelDate,
-        status: { $ne: "confirmed" } // only update if not already confirmed
-      });
-
-      if (booking) {
-        booking.status = "confirmed";
-        await booking.save();
-      }
 
       // Send confirmation email
       await sendEmail({
@@ -180,7 +170,7 @@ export const simulateWebhook = async (req, res) => {
 
       return res.json({
         status: "success",
-        message: "Payment confirmed, booking updated, and email sent."
+        message: "Payment confirmed, and email sent."
       });
     } else {
       return res.status(400).json({

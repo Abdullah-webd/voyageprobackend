@@ -36,6 +36,24 @@ export const createBooking = async (req, res) => {
   }
 };
 
+export const adminChangeBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ status: "error", message: "Booking not found" });
+    }
+    if (booking.bookingStatus === "Confirmed") {
+      return res.status(400).json({ status: "error", message: "Booking is already confirmed" });
+    }
+    booking.bookingStatus = "Confirmed";
+    await booking.save();
+    res.json({ status: "success", message: "Booking status updated to Confirmed", booking });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: "Server error updating booking status" });
+  }
+};
+
 
 // Get bookings for logged-in user
 export const getMyBookings = async (req, res) => {

@@ -9,6 +9,7 @@ import packageRoutes from './routes/package.route.js';
 import paymentRoutes from "./routes/payment.route.js";
 import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
+import adminDashboardRoutes from "./routes/adminDashboard.routes.js";
 import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
@@ -39,6 +40,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use("/api/admin/dashboard", adminDashboardRoutes);
 
 // ✅ Root
 app.get("/", (req, res) => {
