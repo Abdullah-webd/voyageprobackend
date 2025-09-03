@@ -39,7 +39,8 @@ export const authWithOTP = async (req, res) => {
 
     // ===== SIGNUP =====
     if (!user) {
-      user = new User({ email, password });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user = new User({ email, password: hashedPassword });
     } else {
       // ===== LOGIN — Check password =====
       const isMatch = await bcrypt.compare(password, user.password);

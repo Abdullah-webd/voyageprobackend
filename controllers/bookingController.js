@@ -1,18 +1,13 @@
 import {Booking} from "../models/booking.js";
+import { Package } from '../models/package.model.js';
 // Create new booking
 export const createBooking = async (req, res) => {
   try {
     console.log("REQ.USER:", req.user);
     console.log("BODY:", req.body);
 
-    const { packageId, travelDate, travelers, contactInfo,packageName,images } = req.body;
+    const { packageId, travelDate, travelers, contactInfo,packageName} = req.body;
 
-     if (!Array.isArray(images)) {
-      return res.status(400).json({ message: "Images must be an array of URLs" });
-    }
-    if (images.some(img => typeof img !== "string")) {
-      return res.status(400).json({ message: "All images must be valid URLs (strings)" });
-    }
 
     const booking = new Booking({
       userId: req.user?._id || req.user?.id,
@@ -22,7 +17,6 @@ export const createBooking = async (req, res) => {
       travelers: Number(travelers),
       contactInfo,
       status: "pending",
-      images
     });
 
     console.log("Booking to be saved:", booking);
@@ -58,9 +52,23 @@ export const adminChangeBookingStatus = async (req, res) => {
 // Get bookings for logged-in user
 export const getMyBookings = async (req, res) => {
   try {
+    // Get all bookings for the logged-in user
     const bookings = await Booking.find({ userId: req.user.id });
-    res.json(bookings);
+
+    // For each booking, fetch the corresponding package images
+    const bookingsWithImages = await Promise.all(
+      bookings.map(async (booking) => {
+        const pkg = await Package.findById(booking.packageId).select('images');
+        return {
+          ...booking.toObject(),
+          packageImages: pkg ? pkg.images : [] // add images or empty array if not found
+        };
+      })
+    );
+
+    res.json(bookingsWithImages);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 };
