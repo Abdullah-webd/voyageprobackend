@@ -15,4 +15,5 @@ router.put("/:id", authMiddleware, editBooking);
 router.delete("/:id", authMiddleware, cancelBooking); // Cancel booking
 
 
+
 export default router

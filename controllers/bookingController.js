@@ -98,15 +98,7 @@ export const cancelBooking = async (req, res) => {
 export const getAllBookings = async (req, res) => {
   try {
 
-    if(!req.query.packageId){
-      res.json({message:'Package Id is required to get all bookings'});
-      return;
-    }
-    const bookings = await Booking.find({packageId: req.query.packageId})
-    if(!bookings){
-      res.json({message: "No bookings found for this package"});
-      return;
-    }
+    const bookings = await Booking.find()
 
     res.json(bookings);
   } catch (error) {
